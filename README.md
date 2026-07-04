@@ -25,6 +25,8 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 | `/careers` | Tuyển dụng (5 job listings) |
 | `/contact` | Liên hệ (info-only + Google Maps embed) |
 | `/policies` | Chính sách & Điều khoản |
+| `/admin/login` | Đăng nhập admin nội bộ |
+| `/admin/weight-tickets` | Admin tool OCR phiếu cân xe qua n8n webhook |
 | `/sitemap.xml`, `/robots.txt` | SEO auto-generated |
 | `/not-found` | Custom 404 |
 
@@ -34,6 +36,41 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 npm install
 npm run dev          # Dev server at http://localhost:3000
 ```
+
+## Admin OCR Tool
+
+The website includes a static-export compatible admin panel for extracting weight ticket data from images through n8n.
+
+Admin routes:
+
+```text
+/admin/login
+/admin/weight-tickets
+```
+
+The tool supports:
+
+- Upload one or multiple image files (`JPG`, `JPEG`, `PNG`).
+- Input a public Google Drive image URL.
+- Send images to the configured n8n webhook.
+- Output to Google Sheets or Excel, depending on the n8n workflow.
+- Display the JSON result returned by n8n.
+
+Create `.env.local` from `.env.example`:
+
+```bash
+cp .env.example .env.local
+```
+
+Then update:
+
+```env
+NEXT_PUBLIC_N8N_WEBHOOK_URL=http://localhost:5678/webhook/img-extract
+NEXT_PUBLIC_ADMIN_PASSWORD=change-this-admin-password
+NEXT_PUBLIC_GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+```
+
+> Security note: this admin panel uses a client-side `sessionStorage` guard so it can work with `output: 'export'`. This hides the tool from normal navigation, but it is not equivalent to server-side authentication. For public production security, use a server-side admin login and proxy the n8n webhook through a protected API route.
 
 ## Production Build
 
