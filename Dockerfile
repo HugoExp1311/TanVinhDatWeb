@@ -1,5 +1,5 @@
 # ===================================================================
-# Stage 1: Build the Next.js static export
+# Stage 1: Build the Next.js server app
 # ===================================================================
 FROM node:20-alpine AS builder
 
@@ -12,24 +12,28 @@ RUN npm ci --no-audit --no-fund
 # Copy source
 COPY . .
 
-# Build static export to /app/out
+# Build standalone Next.js output to /app/.next/standalone
 RUN npm run build
 
 # ===================================================================
-# Stage 2: Serve with Nginx
+# Stage 2: Run with Node.js
 # ===================================================================
-FROM nginx:1.27-alpine AS runner
+FROM node:20-alpine AS runner
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copy built static files
-COPY --from=builder /app/out /usr/share/nginx/html
+ENV NODE_ENV=production
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+# Copy standalone server and static assets
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+  CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
 
-EXPOSE 80
+EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["node", "server.js"]

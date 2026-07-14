@@ -1,8 +1,8 @@
 'use client';
 
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_LOGIN_PATH, ADMIN_SESSION_KEY, getGoogleSheetUrl, getN8nWebhookUrl } from '@/lib/adminAuth';
+import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_API_PATH, ADMIN_WEIGHT_TICKETS_API_PATH } from '@/lib/adminAuth';
 
 type OutputType = 'google_sheet' | 'excel';
 
@@ -21,8 +21,6 @@ export function WeightTicketExtractor() {
     const driveUrlInputRef = useRef<HTMLInputElement>(null);
     const resultRef = useRef<HTMLDivElement>(null);
 
-    const webhookUrl = useMemo(() => getN8nWebhookUrl(), []);
-    const googleSheetUrl = useMemo(() => getGoogleSheetUrl(), []);
     const [outputType, setOutputType] = useState<OutputType>('google_sheet');
     const [driveUrl, setDriveUrl] = useState('');
     const [loading, setLoading] = useState(false);
@@ -76,16 +74,28 @@ export function WeightTicketExtractor() {
     }
 
     async function sendFormData(formData: FormData, selectedOutputType: OutputType) {
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(ADMIN_WEIGHT_TICKETS_API_PATH, {
             method: 'POST',
+            credentials: 'include',
             body: formData,
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
         const contentType = response.headers.get('content-type') || '';
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                router.replace(ADMIN_LOGIN_PATH);
+                throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            }
+
+            if (contentType.includes('application/json')) {
+                const errorData = (await response.json().catch(() => null)) as { error?: string; details?: string } | null;
+                throw new Error(errorData?.details || errorData?.error || `HTTP error! status: ${response.status}`);
+            }
+
+            const errorText = await response.text().catch(() => '');
+            throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        }
 
         if (selectedOutputType === 'excel') {
             const blob = await response.blob();
@@ -169,7 +179,7 @@ export function WeightTicketExtractor() {
                     error: true,
                     message: 'Có lỗi xảy ra khi xử lý yêu cầu.',
                     details: message,
-                    hint: 'Vui lòng kiểm tra:\n- URL webhook n8n có đúng không?\n- n8n workflow có đang chạy không?\n- Kết nối internet có ổn định không?',
+                    hint: 'Vui lòng kiểm tra:\n- Phiên đăng nhập admin còn hiệu lực không?\n- Cấu hình N8N_WEBHOOK_URL server-side có đúng không?\n- n8n workflow có đang chạy không?\n- Kết nối internet có ổn định không?',
                 },
                 true,
             );
@@ -179,9 +189,16 @@ export function WeightTicketExtractor() {
         }
     }
 
-    function handleLogout() {
-        window.sessionStorage.removeItem(ADMIN_SESSION_KEY);
-        router.replace(ADMIN_LOGIN_PATH);
+    async function handleLogout() {
+        try {
+            await fetch(ADMIN_LOGOUT_API_PATH, {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } finally {
+            router.replace(ADMIN_LOGIN_PATH);
+            router.refresh();
+        }
     }
 
     return (
@@ -275,22 +292,18 @@ export function WeightTicketExtractor() {
                     </form>
 
                     <aside className="card p-6 h-fit">
-                        <h2 className="text-xl font-bold text-brand-primary-900">Cấu hình hiện tại</h2>
+                        <h2 className="text-xl font-bold text-brand-primary-900">Cấu hình bảo mật</h2>
                         <dl className="mt-5 space-y-4 text-sm">
                             <div>
-                                <dt className="font-bold text-slate-700">Webhook n8n (Docker)</dt>
-                                <dd className="mt-1 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs text-slate-600">{webhookUrl}</dd>
+                                <dt className="font-bold text-slate-700">Webhook n8n</dt>
+                                <dd className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-600">
+                                    Được gọi qua API server bảo vệ bởi phiên admin. URL thật không hiển thị trong trình duyệt.
+                                </dd>
                             </div>
                             <div>
-                                <dt className="font-bold text-slate-700">Google Sheet URL</dt>
-                                <dd className="mt-1 break-all rounded-xl bg-slate-50 p-3 font-mono text-xs text-slate-600">
-                                    {googleSheetUrl ? (
-                                        <a href={googleSheetUrl} target="_blank" rel="noopener noreferrer" className="text-brand-secondary-700 hover:text-brand-primary-900 hover:underline">
-                                            {googleSheetUrl}
-                                        </a>
-                                    ) : (
-                                        'Chưa cấu hình NEXT_PUBLIC_GOOGLE_SHEET_URL trong .env.local'
-                                    )}
+                                <dt className="font-bold text-slate-700">Phiên admin</dt>
+                                <dd className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-600">
+                                    Quyền truy cập được kiểm tra bằng cookie <code>HttpOnly</code> do server ký, không phụ thuộc vào bộ nhớ trình duyệt.
                                 </dd>
                             </div>
                         </dl>

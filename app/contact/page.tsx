@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHero } from '@/components/PageHero';
 import { CTASection } from '@/components/CTASection';
+import { InquiryForm } from '@/components/InquiryForm';
 import { site } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -45,6 +46,45 @@ export default function ContactPage() {
                                 </a>
                             </div>
                         ))}
+                    </div>
+
+                    <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:items-start">
+                        <InquiryForm />
+
+                        <div className="space-y-6">
+                            <div className="card p-6 md:p-8">
+                                <div className="eyebrow">Quy trình phản hồi</div>
+                                <h2 className="text-2xl font-bold text-brand-primary-900">Tư vấn nhanh, đúng nhu cầu</h2>
+                                <div className="mt-6 space-y-4">
+                                    {[
+                                        { step: '01', title: 'Tiếp nhận yêu cầu', desc: 'Ghi nhận thông tin liên hệ, địa điểm và loại chất thải cần xử lý.' },
+                                        { step: '02', title: 'Kỹ thuật tư vấn', desc: 'Đề xuất phương án thu gom, vận chuyển, xử lý và hồ sơ chứng từ phù hợp.' },
+                                        { step: '03', title: 'Báo giá chi tiết', desc: 'Gửi báo giá sau khi xác nhận khối lượng, tần suất và điều kiện vận chuyển.' },
+                                    ].map((item) => (
+                                        <div key={item.step} className="flex gap-4">
+                                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-secondary-100 text-sm font-bold text-brand-secondary-700">
+                                                {item.step}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-brand-primary-900">{item.title}</h3>
+                                                <p className="mt-1 text-sm leading-relaxed text-slate-600">{item.desc}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="card bg-gradient-to-br from-brand-primary-900 to-brand-primary-800 p-6 text-white md:p-8">
+                                <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-secondary-200">Khẩn cấp 24/7</div>
+                                <h2 className="mt-3 text-2xl font-bold">Sự cố tràn đổ hoặc cần thu gom gấp?</h2>
+                                <p className="mt-3 text-sm leading-relaxed text-white/75">
+                                    Với yêu cầu khẩn cấp, vui lòng gọi hotline để đội phản ứng nhanh tiếp nhận và điều phối ngay.
+                                </p>
+                                <a href={`tel:${site.hotline.replace(/\s/g, '')}`} className="mt-5 inline-flex rounded-full bg-white px-5 py-3 text-sm font-bold text-brand-primary-900 transition hover:bg-brand-accent">
+                                    ☎ Gọi {site.hotline}
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="mt-12 grid lg:grid-cols-2 gap-8">

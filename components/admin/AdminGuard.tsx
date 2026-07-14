@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_LOGIN_PATH, ADMIN_SESSION_KEY } from '@/lib/adminAuth';
+import { ADMIN_LOGIN_PATH, ADMIN_ME_API_PATH } from '@/lib/adminAuth';
 
 type AdminGuardProps = {
     children: React.ReactNode;
@@ -14,15 +14,39 @@ export function AdminGuard({ children }: AdminGuardProps) {
     const [isAllowed, setIsAllowed] = useState(false);
 
     useEffect(() => {
-        const loggedIn = window.sessionStorage.getItem(ADMIN_SESSION_KEY) === 'true';
+        let isMounted = true;
 
-        if (!loggedIn) {
-            router.replace(ADMIN_LOGIN_PATH);
-            return;
+        async function verifySession() {
+            try {
+                const response = await fetch(ADMIN_ME_API_PATH, {
+                    credentials: 'include',
+                    cache: 'no-store',
+                });
+
+                if (!isMounted) return;
+
+                if (!response.ok) {
+                    router.replace(ADMIN_LOGIN_PATH);
+                    return;
+                }
+
+                setIsAllowed(true);
+            } catch {
+                if (isMounted) {
+                    router.replace(ADMIN_LOGIN_PATH);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsChecking(false);
+                }
+            }
         }
 
-        setIsAllowed(true);
-        setIsChecking(false);
+        verifySession();
+
+        return () => {
+            isMounted = false;
+        };
     }, [router]);
 
     if (isChecking) {

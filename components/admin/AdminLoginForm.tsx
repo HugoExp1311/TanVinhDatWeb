@@ -2,24 +2,59 @@
 
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_PANEL_PATH, ADMIN_SESSION_KEY, getAdminPassword } from '@/lib/adminAuth';
+import { ADMIN_LOGIN_API_PATH, ADMIN_PANEL_PATH } from '@/lib/adminAuth';
 
 export function AdminLoginForm() {
     const router = useRouter();
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    function getSafeRedirectPath() {
+        const nextPath = new URLSearchParams(window.location.search).get('next');
+
+        if (nextPath?.startsWith('/admin/') && !['/admin/login', '/admin/login/'].includes(nextPath)) {
+            return nextPath;
+        }
+
+        return ADMIN_PANEL_PATH;
+    }
+
+    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
         setError('');
 
-        if (password === getAdminPassword()) {
-            window.sessionStorage.setItem(ADMIN_SESSION_KEY, 'true');
-            router.replace(ADMIN_PANEL_PATH);
+        if (!password.trim()) {
+            setError('Vui lòng nhập mật khẩu admin.');
             return;
         }
 
-        setError('Mật khẩu admin không đúng. Vui lòng thử lại.');
+        setIsSubmitting(true);
+
+        try {
+            const response = await fetch(ADMIN_LOGIN_API_PATH, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({ password }),
+            });
+
+            const data = (await response.json().catch(() => null)) as { error?: string } | null;
+
+            if (!response.ok) {
+                setError(data?.error || 'Thông tin đăng nhập không hợp lệ.');
+                return;
+            }
+
+            router.replace(getSafeRedirectPath());
+            router.refresh();
+        } catch {
+            setError('Không thể kết nối tới máy chủ xác thực. Vui lòng thử lại.');
+        } finally {
+            setIsSubmitting(false);
+        }
     }
 
     return (
@@ -45,17 +80,17 @@ export function AdminLoginForm() {
                     placeholder="Nhập mật khẩu"
                     className="mt-2 w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-slate-900 outline-none transition focus:border-brand-primary-700 focus:ring-4 focus:ring-brand-primary-100"
                     autoComplete="current-password"
+                    disabled={isSubmitting}
                 />
                 {error && <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</p>}
             </div>
 
-            <button type="submit" className="btn-primary mt-6 w-full rounded-2xl">
-                Đăng nhập
+            <button type="submit" disabled={isSubmitting} className="btn-primary mt-6 w-full rounded-2xl disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </button>
 
             <p className="mt-5 text-xs leading-relaxed text-slate-500">
-                Lưu ý: Phiên đăng nhập này dùng <code>sessionStorage</code> để tương thích static export. Đây là lớp bảo vệ nhẹ cho nội bộ,
-                không thay thế xác thực server-side.
+                Phiên đăng nhập được xác thực trên server và lưu bằng cookie <code>HttpOnly</code>. Không nhập mật khẩu admin trên thiết bị không tin cậy.
             </p>
         </form>
     );

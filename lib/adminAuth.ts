@@ -1,16 +1,9 @@
-export const ADMIN_SESSION_KEY = 'tvd_admin_ok';
-
 export const ADMIN_LOGIN_PATH = '/admin/login';
 export const ADMIN_PANEL_PATH = '/admin/weight-tickets';
 
-export function getAdminPassword() {
-    return process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
-}
+export const ADMIN_LOGIN_API_PATH = '/api/admin/login';
+export const ADMIN_LOGOUT_API_PATH = '/api/admin/logout';
+export const ADMIN_ME_API_PATH = '/api/admin/me';
+export const ADMIN_WEIGHT_TICKETS_API_PATH = '/api/admin/weight-tickets';
 
-export function getN8nWebhookUrl() {
-    return process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/img-extract';
-}
-
-export function getGoogleSheetUrl() {
-    return process.env.NEXT_PUBLIC_GOOGLE_SHEET_URL || '';
-}
+export type AdminRole = 'owner' | 'admin' | 'operator';
