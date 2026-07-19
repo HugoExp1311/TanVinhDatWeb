@@ -1,42 +1,28 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { ADMIN_PANEL_PATH } from '@/lib/adminAuth';
+import { getClientIp } from '@/lib/server/clientIp';
 import { verifyAdminPassword } from '@/lib/server/adminPassword';
+import { consumeRateLimit, resetRateLimit } from '@/lib/server/rateLimit';
 import { ADMIN_SESSION_COOKIE, createAdminSessionToken, getAdminSessionMaxAgeSeconds, getConfiguredAdminRole } from '@/lib/server/adminSession';
 
 export const runtime = 'nodejs';
 
-type LoginRateLimitEntry = {
-    count: number;
-    resetAt: number;
-};
-
-const LOGIN_WINDOW_MS = 5 * 60 * 1000;
-const MAX_LOGIN_ATTEMPTS = 10;
-const loginAttempts = new Map<string, LoginRateLimitEntry>();
-
-function getClientIp(request: NextRequest) {
-    return request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
-}
-
-function isRateLimited(key: string) {
-    const now = Date.now();
-    const existing = loginAttempts.get(key);
-
-    if (!existing || existing.resetAt <= now) {
-        loginAttempts.set(key, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
-        return false;
-    }
-
-    existing.count += 1;
-
-    return existing.count > MAX_LOGIN_ATTEMPTS;
-}
 
 export async function POST(request: NextRequest) {
     const clientIp = getClientIp(request);
 
-    if (isRateLimited(clientIp)) {
-        return NextResponse.json({ error: 'Quá nhiều lần đăng nhập. Vui lòng thử lại sau.' }, { status: 429 });
+    try {
+        const rateLimit = await consumeRateLimit('admin-login', clientIp, 10, 5 * 60 * 1000);
+
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { error: 'Quá nhiều lần đăng nhập. Vui lòng thử lại sau.' },
+                { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } },
+            );
+        }
+    } catch (error) {
+        console.error('[admin-login] rate limiter unavailable', error instanceof Error ? error.message : 'Unknown rate limiter error');
+        return NextResponse.json({ error: 'Dịch vụ đăng nhập tạm thời không khả dụng.' }, { status: 503 });
     }
 
     let password = '';
@@ -55,7 +41,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Thông tin đăng nhập không hợp lệ.' }, { status: 401 });
         }
 
-        loginAttempts.delete(clientIp);
+        await resetRateLimit('admin-login', clientIp);
 
         const role = getConfiguredAdminRole();
         const token = await createAdminSessionToken(role);

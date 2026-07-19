@@ -4,10 +4,11 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript, standalone server output)
-- **Tailwind CSS** (custom brand palette: industrial blue `#0F4C75` + eco green `#16A34A` + accent gold)
+- **Next.js 15** (App Router, TypeScript, standalone server output)
+- **React 19** + **Tailwind CSS** (brand palette: industrial blue `#0F4C75` + eco green `#16A34A` + accent gold)
 - **Inter** font (Vietnamese subset via `next/font/google`)
-- **Node.js 20** (Alpine) for secure server-side API routes in Docker
+- **Node.js 20** (Alpine) multi-stage Docker image, non-root `node` user
+- **Caddy 2** TLS ingress + **Redis** for distributed rate limits / OCR concurrency
 - **Google Maps embed** (no API key required)
 
 ## Pages (14 routes)
@@ -59,12 +60,11 @@ The tool supports:
 Security behavior:
 
 - Admin login is handled by `POST /api/admin/login`.
-- Password verification happens only on the server.
-- Passwords are stored as PBKDF2 hashes via `ADMIN_PASSWORD_HASH`.
-- Authenticated admin sessions are signed and stored in an `HttpOnly` cookie.
-- `/admin/*` pages are protected by Next.js middleware.
-- The n8n webhook URL is configured as server-only `N8N_WEBHOOK_URL` and is never exposed in browser JavaScript.
-- The OCR proxy endpoint `/api/admin/weight-tickets` requires a valid admin session and role.
+- Password verification happens only on the server (PBKDF2 via `ADMIN_PASSWORD_HASH`).
+- Authenticated admin sessions are signed (HMAC) and stored in an `HttpOnly` cookie.
+- `/admin/*` pages are protected by Next.js middleware; APIs re-check session and role.
+- OCR goes through `POST /api/admin/weight-tickets` only. Server validates MIME, magic bytes (JPEG/PNG), size (≤10MB/file, ≤10 files), request `Content-Length`, rate limits, and concurrency, then proxies to server-only `N8N_WEBHOOK_URL` (optional `N8N_WEBHOOK_SECRET`).
+- Public contact form posts to `POST /api/contact`, which proxies to server-only `CONTACT_WEBHOOK_URL` (optional `CONTACT_WEBHOOK_SECRET`). There is no browser-exposed contact webhook URL.
 
 Create `.env.local` from `.env.example`:
 
@@ -72,16 +72,22 @@ Create `.env.local` from `.env.example`:
 cp .env.example .env.local
 ```
 
-Then update:
+Then set at least:
 
 ```env
 ADMIN_PASSWORD_HASH=pbkdf2:sha256:310000:...
 ADMIN_SESSION_SECRET=replace-with-at-least-32-random-characters
 ADMIN_ROLE=owner
 ADMIN_SESSION_MAX_AGE_SECONDS=28800
-N8N_WEBHOOK_URL=http://localhost:5678/webhook/img-extract
+REDIS_URL=redis://127.0.0.1:6379
+TRUST_PROXY=false
+TRUSTED_PROXY_HEADER=x-real-ip
+SITE_ADDRESS=https://tanvinhdat.vn
+N8N_WEBHOOK_URL=https://your-n8n-domain/webhook/img-extract
 N8N_WEBHOOK_SECRET=
 GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+CONTACT_WEBHOOK_URL=https://your-n8n-domain/webhook/contact-inquiry
+CONTACT_WEBHOOK_SECRET=
 ```
 
 Generate the admin password hash:
@@ -98,7 +104,7 @@ Generate a strong session secret:
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
 ```
 
-> Security note: do not use `NEXT_PUBLIC_*` variables for admin passwords, webhook URLs, or other secrets. `NEXT_PUBLIC_*` values are bundled into client-side JavaScript.
+> Security note: never put admin passwords, session secrets, or n8n webhook URLs in `NEXT_PUBLIC_*` variables. Those values are bundled into client JavaScript. Use the server-only names in `.env.example`.
 
 ## Production Build
 
@@ -109,23 +115,27 @@ npm run start        # Starts the Next.js server
 
 ## Docker
 
+Production Compose topology: **Caddy** (host `80`/`443`) → **web** (Next standalone on `3000`, not published) + **redis**.
+
 ```bash
-# Build & start
+# Requires SITE_ADDRESS and app secrets in the environment or a `.env` file
 docker compose up --build -d
 
-# Check status
 docker compose ps
-
-# View logs
-docker compose logs -f web
-
-# Stop
+docker compose logs -f caddy web redis
 docker compose down
 ```
 
-The image is multi-stage:
+Image notes:
 - Stage 1: `node:20-alpine` builds Next.js standalone output
-- Stage 2: `node:20-alpine` runs `server.js` with private server-side environment variables
+- Stage 2: `node:20-alpine` runs `node server.js` as **`USER node`** (non-root)
+- Compose injects `REDIS_URL=redis://redis:6379`, `TRUST_PROXY=true`, `TRUSTED_PROXY_HEADER=x-real-ip`
+- Caddy terminates TLS for `SITE_ADDRESS` and sets `X-Real-IP` for trusted client IP rate limiting
+
+Operator prerequisites:
+- Real DNS for `SITE_ADDRESS` and open ports 80/443 (Caddy obtains certificates)
+- `N8N_WEBHOOK_URL` / `CONTACT_WEBHOOK_URL` must be reachable **from the `web` container** and use **HTTPS in production** (enforced in app code). Do not point them at `http://localhost:...` inside Compose unless n8n truly shares that network namespace
+- Caddy body limits (decimal units): `/api/contact` **33KB**, other routes (including OCR) **106MB**. App authoritative caps remain lower and exact: contact **32,768** bytes (`32 KiB`); OCR **105,906,176** bytes (`10 × 10 MiB + 1 MiB`). Caddy values are ingress headroom only so the proxy does not reject under the app limits.
 
 ## Project Structure
 
@@ -142,11 +152,12 @@ The image is multi-stage:
 ├── components/                   # Header, Footer, PageHero, ServiceCard,
 │                                 # ServiceIcon, FAQAccordion, CTASection
 ├── lib/site.ts                   # Central site config (company info, content)
-├── Dockerfile                    # Multi-stage: builder + Node.js runner
-├── docker-compose.yml            # Single web service
+├── Dockerfile                    # Multi-stage builder + non-root Node runner
+├── docker-compose.yml            # caddy + web + redis
+├── Caddyfile                     # TLS reverse proxy → web:3000
 ├── middleware.ts                 # Protects /admin/* routes with signed cookie auth
-├── nginx.conf                    # Legacy static Nginx config, not used by current Dockerfile
-├── next.config.mjs               # `output: 'standalone'` for server deployment
+├── nginx.conf                    # Legacy static Nginx config (not used by current Docker path)
+├── next.config.mjs               # standalone output + security headers
 ├── tailwind.config.ts            # Custom brand palette + animations
 └── tsconfig.json
 ```
@@ -171,21 +182,16 @@ All copy is centralized in `lib/site.ts`. To replace placeholder content:
 
 ## Contact Inquiry Form
 
-The contact page includes a smart service inquiry / quote request form for public visitors.
+The contact page form validates input in the browser, then `POST`s JSON to **`/api/contact`**.
 
-By default, the public contact form can work without storing data on the website server and falls back to opening a prefilled email to `site.email`.
+- Server rate-limits by client IP (Redis in production; see `TRUST_PROXY` / `TRUSTED_PROXY_HEADER`).
+- Server forwards to **`CONTACT_WEBHOOK_URL`** with optional **`CONTACT_WEBHOOK_SECRET`** (`Authorization: Bearer …`).
+- If the webhook is not configured, the API returns `503` with `CONTACT_WEBHOOK_NOT_CONFIGURED` and the client can fall back to a prefilled `mailto:` to `site.email`.
+- Expected JSON fields include visitor contact data, service interest, waste type, volume/frequency, timeline, message, plus server-added `source` and `submittedAt`.
 
-To submit form data directly to an automation workflow, configure a public webhook endpoint:
+Do **not** configure `NEXT_PUBLIC_CONTACT_WEBHOOK_URL` — that variable is obsolete and must not appear in client bundles.
 
-```env
-NEXT_PUBLIC_CONTACT_WEBHOOK_URL=https://your-n8n-domain/webhook/contact-inquiry
-```
-
-Expected JSON payload includes visitor contact fields, service interest, waste type, estimated volume/frequency, timeline, message, `source`, and `submittedAt`.
-
-> Because this is a `NEXT_PUBLIC_*` value in a static site, the webhook URL is visible in the browser bundle. Use spam protection, validation, and rate limiting in the receiving workflow for production.
-
-> **Note:** All images use Unsplash URLs with `unoptimized` prop to keep image handling simple. For production, download and host images locally.
+> **Note:** Marketing images may still use Unsplash URLs with `unoptimized`. For production branding, prefer self-hosted assets.
 
 ## SEO
 

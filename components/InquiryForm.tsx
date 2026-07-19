@@ -54,7 +54,6 @@ const wasteTypeOptions = [
     'Cần tư vấn phân loại',
 ];
 
-const contactWebhookUrl = process.env.NEXT_PUBLIC_CONTACT_WEBHOOK_URL?.trim() || '';
 
 function validateEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -89,7 +88,6 @@ export function InquiryForm() {
     const [status, setStatus] = useState<SubmitStatus>('idle');
     const [statusMessage, setStatusMessage] = useState('');
 
-    const hasWebhook = Boolean(contactWebhookUrl);
     const serviceOptions = useMemo(
         () => [...site.services.map((service) => service.title), 'Tư vấn hồ sơ môi trường', 'Ứng cứu sự cố môi trường'],
         [],
@@ -132,52 +130,42 @@ export function InquiryForm() {
             return;
         }
 
-        if (values.website) {
-            setStatus('success');
-            setStatusMessage('Cảm ơn bạn. Yêu cầu đã được ghi nhận.');
-            setValues(initialValues);
-            return;
-        }
 
-        const payload = {
-            source: 'tanvinhdat-contact-form',
-            submittedAt: new Date().toISOString(),
-            ...values,
-            website: undefined,
-        };
+        const payload = { ...values };
 
-        if (hasWebhook) {
-            setStatus('submitting');
-            setStatusMessage('Đang gửi yêu cầu tư vấn...');
+        setStatus('submitting');
+        setStatusMessage('Đang gửi yêu cầu tư vấn...');
 
-            try {
-                const response = await fetch(contactWebhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
+        try {
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            const responseData = (await response.json().catch(() => null)) as { error?: string } | null;
 
-                if (!response.ok) {
-                    throw new Error(`Webhook responded with ${response.status}`);
-                }
-
+            if (response.status === 503 && responseData?.error === 'CONTACT_WEBHOOK_NOT_CONFIGURED') {
+                const subject = encodeURIComponent(`Yêu cầu tư vấn dịch vụ từ ${values.company}`);
+                const body = encodeURIComponent(buildMailBody(values));
+                window.location.href = `mailto:${site.email}?subject=${subject}&body=${body}`;
                 setStatus('success');
-                setStatusMessage('Yêu cầu đã được gửi thành công. Tân Vĩnh Đạt sẽ phản hồi trong 24 giờ làm việc.');
-                setValues(initialValues);
-            } catch (error) {
-                console.error(error);
-                setStatus('error');
-                setStatusMessage('Chưa thể gửi form tự động. Vui lòng gọi hotline hoặc thử lại sau.');
+                setStatusMessage('Ứng dụng email đã được mở với nội dung yêu cầu. Vui lòng kiểm tra và bấm gửi email.');
+                return;
             }
 
-            return;
+            if (!response.ok) {
+                throw new Error(responseData?.error || `HTTP error! status: ${response.status}`);
+            }
+
+            setStatus('success');
+            setStatusMessage('Yêu cầu đã được gửi thành công. Tân Vĩnh Đạt sẽ phản hồi trong 24 giờ làm việc.');
+            setValues(initialValues);
+        } catch (error) {
+            console.error(error);
+            setStatus('error');
+            setStatusMessage('Chưa thể gửi form tự động. Vui lòng gọi hotline hoặc thử lại sau.');
         }
 
-        const subject = encodeURIComponent(`Yêu cầu tư vấn dịch vụ từ ${values.company}`);
-        const body = encodeURIComponent(buildMailBody(values));
-        window.location.href = `mailto:${site.email}?subject=${subject}&body=${body}`;
-        setStatus('success');
-        setStatusMessage('Ứng dụng email đã được mở với nội dung yêu cầu. Vui lòng kiểm tra và bấm gửi email.');
     }
 
     const inputClass = 'mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-brand-secondary-500 focus:ring-4 focus:ring-brand-secondary-100';
@@ -375,12 +363,10 @@ export function InquiryForm() {
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <button type="submit" className="btn-primary" disabled={status === 'submitting'}>
-                        {status === 'submitting' ? 'Đang gửi...' : hasWebhook ? 'Gửi yêu cầu tư vấn' : 'Mở email gửi yêu cầu'}
+                        {status === 'submitting' ? 'Đang gửi...' : 'Gửi yêu cầu tư vấn'}
                     </button>
                     <p className="text-xs text-slate-500">
-                        {hasWebhook
-                            ? 'Form được gửi trực tiếp đến bộ phận phụ trách tư vấn.'
-                            : 'Chưa cấu hình webhook, form sẽ tạo email gửi đến công ty.'}
+                        Form được gửi an toàn qua máy chủ Tân Vĩnh Đạt; nếu chưa cấu hình tự động hóa, ứng dụng email sẽ được mở.
                     </p>
                 </div>
             </form>

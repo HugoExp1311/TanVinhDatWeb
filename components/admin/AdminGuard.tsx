@@ -1,17 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_LOGIN_PATH, ADMIN_ME_API_PATH } from '@/lib/adminAuth';
+import { ADMIN_LOGIN_PATH, ADMIN_ME_API_PATH, type AdminRole } from '@/lib/adminAuth';
+
+type AdminSession = {
+    authenticated: true;
+    role: AdminRole;
+    expiresAt: number;
+    googleSheetUrl: string | null;
+};
 
 type AdminGuardProps = {
     children: React.ReactNode;
 };
 
+const AdminSessionContext = createContext<AdminSession | null>(null);
+
+export function useAdminSession() {
+    const session = useContext(AdminSessionContext);
+
+    if (!session) {
+        throw new Error('useAdminSession must be used inside AdminGuard.');
+    }
+
+    return session;
+}
+
 export function AdminGuard({ children }: AdminGuardProps) {
     const router = useRouter();
     const [isChecking, setIsChecking] = useState(true);
-    const [isAllowed, setIsAllowed] = useState(false);
+    const [session, setSession] = useState<AdminSession | null>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -30,7 +49,11 @@ export function AdminGuard({ children }: AdminGuardProps) {
                     return;
                 }
 
-                setIsAllowed(true);
+                const sessionData = (await response.json()) as AdminSession;
+
+                if (!isMounted) return;
+
+                setSession(sessionData);
             } catch {
                 if (isMounted) {
                     router.replace(ADMIN_LOGIN_PATH);
@@ -62,7 +85,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
         );
     }
 
-    if (!isAllowed) return null;
+    if (!session) return null;
 
-    return <>{children}</>;
+    return <AdminSessionContext.Provider value={session}>{children}</AdminSessionContext.Provider>;
 }

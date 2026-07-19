@@ -2,6 +2,7 @@
 
 import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdminSession } from '@/components/admin/AdminGuard';
 import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_API_PATH, ADMIN_WEIGHT_TICKETS_API_PATH } from '@/lib/adminAuth';
 
 type OutputType = 'google_sheet' | 'excel';
@@ -16,6 +17,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export function WeightTicketExtractor() {
     const router = useRouter();
+    const { googleSheetUrl } = useAdminSession();
     const formRef = useRef<HTMLFormElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const driveUrlInputRef = useRef<HTMLInputElement>(null);
@@ -301,9 +303,20 @@ export function WeightTicketExtractor() {
                                 </dd>
                             </div>
                             <div>
-                                <dt className="font-bold text-slate-700">Phiên admin</dt>
+                                <dt className="font-bold text-slate-700">Google Sheet</dt>
                                 <dd className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-600">
-                                    Quyền truy cập được kiểm tra bằng cookie <code>HttpOnly</code> do server ký, không phụ thuộc vào bộ nhớ trình duyệt.
+                                    {googleSheetUrl ? (
+                                        <a
+                                            href={googleSheetUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-bold text-brand-primary-800 underline decoration-brand-primary-300 underline-offset-4 transition hover:text-brand-primary-600"
+                                        >
+                                            Mở Google Sheet ↗
+                                        </a>
+                                    ) : (
+                                        'Chưa cấu hình GOOGLE_SHEET_URL hợp lệ trên server.'
+                                    )}
                                 </dd>
                             </div>
                         </dl>

@@ -30,9 +30,12 @@ ENV PORT=3000
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# Run the standalone server with the unprivileged user provided by the Node image
+USER node
+
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
 EXPOSE 3000
 

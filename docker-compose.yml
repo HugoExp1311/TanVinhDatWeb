@@ -1,4 +1,31 @@
 services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS to the production HTTPS hostname, for example https://tanvinhdat.vn}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+
+  redis:
+    image: redis:8.2-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
   web:
     build:
       context: .
@@ -6,8 +33,11 @@ services:
     image: tanvinhdat-web:latest
     container_name: tanvinhdat-web
     restart: unless-stopped
-    ports:
-      - "80:3000"
+    expose:
+      - "3000"
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       NODE_ENV: production
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
@@ -17,9 +47,13 @@ services:
       N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
       N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET}
       GOOGLE_SHEET_URL: ${GOOGLE_SHEET_URL}
-      NEXT_PUBLIC_CONTACT_WEBHOOK_URL: ${NEXT_PUBLIC_CONTACT_WEBHOOK_URL}
+      CONTACT_WEBHOOK_URL: ${CONTACT_WEBHOOK_URL}
+      CONTACT_WEBHOOK_SECRET: ${CONTACT_WEBHOOK_SECRET}
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: "true"
+      TRUSTED_PROXY_HEADER: x-real-ip
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -29,3 +63,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:

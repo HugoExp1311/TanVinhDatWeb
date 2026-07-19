@@ -1,0 +1,30 @@
+{$SITE_ADDRESS} {
+    encode zstd gzip
+
+    @login path /api/admin/login /api/admin/login/
+    @contact path /api/contact /api/contact/*
+    @other not path /api/admin/login /api/admin/login/ /api/contact /api/contact/*
+
+    route {
+        request_body @login {
+            max_size 1100B
+        }
+
+        request_body @contact {
+            max_size 33KB
+        }
+
+        request_body @other {
+            max_size 106MB
+        }
+
+        reverse_proxy web:3000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        -Server
+    }
+}
