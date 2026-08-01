@@ -81,7 +81,8 @@ function validateFormData(formData: FormData) {
 }
 
 export async function POST(request: NextRequest) {
-    const session = await verifyAdminSessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
+    const cookieStore = await cookies();
+    const session = await verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
 
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

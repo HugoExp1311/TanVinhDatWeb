@@ -5,14 +5,15 @@ import { CTASection } from '@/components/CTASection';
 import { ServiceIcon } from '@/components/ServiceIcon';
 import { site } from '@/lib/site';
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export function generateStaticParams() {
     return site.services.map((s) => ({ slug: s.slug }));
 }
 
-export function generateMetadata({ params }: Props): Metadata {
-    const service = site.services.find((s) => s.slug === params.slug);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+    const { slug } = await params;
+    const service = site.services.find((s) => s.slug === slug);
     if (!service) return { title: 'Không tìm thấy' };
     return {
         title: service.title,
@@ -20,8 +21,9 @@ export function generateMetadata({ params }: Props): Metadata {
     };
 }
 
-export default function ServiceDetailPage({ params }: Props) {
-    const service = site.services.find((s) => s.slug === params.slug);
+export default async function ServiceDetailPage({ params }: Props) {
+    const { slug } = await params;
+    const service = site.services.find((s) => s.slug === slug);
     if (!service) notFound();
 
     return (

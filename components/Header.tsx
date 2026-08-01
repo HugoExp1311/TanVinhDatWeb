@@ -40,6 +40,12 @@ export function Header() {
 
                 {/* Right CTA */}
                 <div className="hidden lg:flex items-center gap-4">
+                    <Link
+                        href="/dev/weight-tickets"
+                        className="px-5 py-3 rounded-xl border-2 border-brand-primary-200 text-brand-primary-800 text-base font-bold hover:bg-brand-primary-50 transition-colors"
+                    >
+                        Phiếu cân
+                    </Link>
                     <a
                         href={`tel:${site.hotline.replace(/\s/g, '')}`}
                         className="text-base font-bold text-brand-primary-800 hover:text-brand-secondary-600 transition-colors"
@@ -85,6 +91,13 @@ export function Header() {
                                 {item.label}
                             </Link>
                         ))}
+                        <Link
+                            href="/dev/weight-tickets"
+                            onClick={() => setOpen(false)}
+                            className="px-4 py-3.5 text-lg font-semibold text-brand-primary-800 hover:bg-brand-primary-50 rounded-lg transition-colors"
+                        >
+                            📋 Phiếu cân (Dev)
+                        </Link>
                         <a
                             href={`tel:${site.hotline.replace(/\s/g, '')}`}
                             className="mt-2 px-4 py-3.5 text-lg font-bold text-brand-secondary-700"

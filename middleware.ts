@@ -5,6 +5,15 @@ import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from '@/lib/server/admi
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const normalizedPathname = pathname.replace(/\/$/, '') || '/';
+
+    if (normalizedPathname.startsWith('/dev/')) {
+        if (process.env.NODE_ENV === 'production') {
+            return NextResponse.rewrite(new URL('/404', request.url));
+        }
+
+        return NextResponse.next();
+    }
+
     const session = await verifyAdminSessionToken(request.cookies.get(ADMIN_SESSION_COOKIE)?.value);
 
     if (normalizedPathname === ADMIN_LOGIN_PATH) {
@@ -26,5 +35,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*'],
+    matcher: ['/admin/:path*', '/dev/:path*'],
 };

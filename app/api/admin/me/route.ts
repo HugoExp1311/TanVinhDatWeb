@@ -5,7 +5,8 @@ import { ADMIN_SESSION_COOKIE, verifyAdminSessionToken } from '@/lib/server/admi
 export const runtime = 'nodejs';
 
 export async function GET() {
-    const session = await verifyAdminSessionToken(cookies().get(ADMIN_SESSION_COOKIE)?.value);
+    const cookieStore = await cookies();
+    const session = await verifyAdminSessionToken(cookieStore.get(ADMIN_SESSION_COOKIE)?.value);
 
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
