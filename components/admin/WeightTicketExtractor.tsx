@@ -2,7 +2,7 @@
 
 import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_API_PATH, ADMIN_WEIGHT_TICKETS_API_PATH } from '@/lib/adminAuth';
+import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_API_PATH, ADMIN_STATS_PATH, ADMIN_WEIGHT_TICKETS_API_PATH } from '@/lib/adminAuth';
 
 type OutputType = 'google_sheet' | 'excel';
 
@@ -212,9 +212,18 @@ export function WeightTicketExtractor() {
                             Upload ảnh phiếu cân hoặc nhập Google Drive URL để gửi sang n8n OCR và ghi dữ liệu vào Google Sheets hoặc tải Excel.
                         </p>
                     </div>
-                    <button type="button" onClick={handleLogout} className="btn-outline w-fit bg-white">
-                        Đăng xuất
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            type="button"
+                            onClick={() => router.push(ADMIN_STATS_PATH)}
+                            className="btn-outline w-fit bg-white"
+                        >
+                            📊 Thống kê
+                        </button>
+                        <button type="button" onClick={handleLogout} className="btn-outline w-fit bg-white">
+                            Đăng xuất
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">

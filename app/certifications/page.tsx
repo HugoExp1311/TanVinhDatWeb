@@ -38,6 +38,33 @@ export default function CertificationsPage() {
                 </div>
             </section>
 
+            <section className="section bg-slate-50">
+                <div className="container-x">
+                    <div className="text-center max-w-3xl mx-auto mb-10">
+                        <div className="eyebrow">Tuân thủ pháp lý</div>
+                        <h2 className="section-title">Văn bản pháp luật ngành chất thải</h2>
+                        <p className="section-subtitle">
+                            Tân Vĩnh Đạt vận hành theo khung pháp lý Việt Nam về bảo vệ môi trường, cập nhật đầy đủ khi quy định thay đổi.
+                        </p>
+                    </div>
+                    <div className="max-w-4xl mx-auto overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        {site.legalCompliance.map((item, index) => (
+                            <div
+                                key={item.name}
+                                className={`flex flex-col gap-2 p-5 md:flex-row md:items-center md:gap-6 ${index !== site.legalCompliance.length - 1 ? 'border-b border-slate-100' : ''
+                                    }`}
+                            >
+                                <div className="md:w-2/5">
+                                    <p className="font-bold text-brand-primary-900">{item.name}</p>
+                                    <p className="mt-1 text-xs font-semibold text-brand-secondary-700">{item.org}</p>
+                                </div>
+                                <p className="md:w-3/5 text-sm text-slate-600">{item.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             <section className="section bg-subtle-gradient">
                 <div className="container-x">
                     <div className="text-center max-w-3xl mx-auto">
