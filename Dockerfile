@@ -30,9 +30,12 @@ ENV PORT=3000
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Healthcheck
+# Run as non-root user (node:20-alpine ships with UID 1000)
+USER node
+
+# Healthcheck — use 127.0.0.1 (IPv4) to avoid Alpine localhost → ::1 mismatch
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost:3000/ || exit 1
+  CMD wget --quiet --tries=1 --spider http://127.0.0.1:3000/ || exit 1
 
 EXPOSE 3000
 
