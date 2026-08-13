@@ -11,8 +11,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
         '/certifications',
         '/process',
         '/faq',
-        '/pricing',
-        '/careers',
         '/contact',
         '/policies',
     ];
