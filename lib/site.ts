@@ -135,6 +135,33 @@ export const site = {
         { name: 'Nghị định 08/2022', org: 'Chính phủ VN', desc: 'Quản lý chất thải & phế liệu' },
         { name: 'Thông tư 02/2022', org: 'Bộ TNMT', desc: 'Quy chuẩn kỹ thuật QG về CTNH' },
     ],
+    legalCompliance: [
+        {
+            name: 'Luật Bảo vệ Môi trường 2020',
+            org: 'Quốc hội Việt Nam',
+            desc: 'Khung pháp lý tối cao về bảo vệ môi trường, quy định nghĩa vụ của doanh nghiệp xử lý chất thải.',
+        },
+        {
+            name: 'Thông tư 20/2021/TT-BTNMT',
+            org: 'Bộ Tài nguyên & Môi trường',
+            desc: 'Quy định về cấp phép, điều kiện và hồ sơ hoạt động xử lý chất thải nguy hại.',
+        },
+        {
+            name: 'Nghị định 38/2015/NĐ-CP',
+            org: 'Chính phủ VN',
+            desc: 'Quản lý chất thải rắn, bao gồm thu gom, vận chuyển và xử lý tại cơ sở.',
+        },
+        {
+            name: 'Nghị định 08/2022/NĐ-CP',
+            org: 'Chính phủ VN',
+            desc: 'Quản lý chất thải và phế liệu, cập nhật yêu cầu vận hành cho doanh nghiệp ngành môi trường.',
+        },
+        {
+            name: 'Quyết định cấp phép UBND',
+            org: 'UBND cấp tỉnh/thành phố',
+            desc: 'Giấy phép vận chuyển chất thải nguy hại theo tuyến đường được cấp bởi cơ quan chức năng địa phương.',
+        },
+    ],
     faqs: [
         {
             q: 'Các loại chất thải nào được Tân Vĩnh Đạt tiếp nhận?',

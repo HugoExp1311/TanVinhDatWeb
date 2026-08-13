@@ -4,10 +4,10 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 
 ## Stack
 
-- **Next.js 14** (App Router, TypeScript, static export)
+- **Next.js 14** (App Router, TypeScript, standalone server output)
 - **Tailwind CSS** (custom brand palette: industrial blue `#0F4C75` + eco green `#16A34A` + accent gold)
 - **Inter** font (Vietnamese subset via `next/font/google`)
-- **Nginx 1.27** (Alpine) for static file serving in Docker
+- **Node.js 20** (Alpine) for secure server-side API routes in Docker
 - **Google Maps embed** (no API key required)
 
 ## Pages (14 routes)
@@ -23,7 +23,7 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 | `/faq` | Hỏi đáp (6-item accordion) |
 | `/pricing` | Bảng giá tham khảo (3 category tables) |
 | `/careers` | Tuyển dụng (5 job listings) |
-| `/contact` | Liên hệ (info-only + Google Maps embed) |
+| `/contact` | Liên hệ, form yêu cầu tư vấn/báo giá + Google Maps embed |
 | `/policies` | Chính sách & Điều khoản |
 | `/admin/login` | Đăng nhập admin nội bộ |
 | `/admin/weight-tickets` | Admin tool OCR phiếu cân xe qua n8n webhook |
@@ -39,7 +39,7 @@ npm run dev          # Dev server at http://localhost:3000
 
 ## Admin OCR Tool
 
-The website includes a static-export compatible admin panel for extracting weight ticket data from images through n8n.
+The website includes a secure server-side admin panel for extracting weight ticket data from images through n8n.
 
 Admin routes:
 
@@ -52,9 +52,19 @@ The tool supports:
 
 - Upload one or multiple image files (`JPG`, `JPEG`, `PNG`).
 - Input a public Google Drive image URL.
-- Send images to the configured n8n webhook.
+- Send images to a protected server API route, which proxies to the private n8n webhook.
 - Output to Google Sheets or Excel, depending on the n8n workflow.
 - Display the JSON result returned by n8n.
+
+Security behavior:
+
+- Admin login is handled by `POST /api/admin/login`.
+- Password verification happens only on the server.
+- Passwords are stored as PBKDF2 hashes via `ADMIN_PASSWORD_HASH`.
+- Authenticated admin sessions are signed and stored in an `HttpOnly` cookie.
+- `/admin/*` pages are protected by Next.js middleware.
+- The n8n webhook URL is configured as server-only `N8N_WEBHOOK_URL` and is never exposed in browser JavaScript.
+- The OCR proxy endpoint `/api/admin/weight-tickets` requires a valid admin session and role.
 
 Create `.env.local` from `.env.example`:
 
@@ -65,18 +75,36 @@ cp .env.example .env.local
 Then update:
 
 ```env
-NEXT_PUBLIC_N8N_WEBHOOK_URL=http://localhost:5678/webhook/img-extract
-NEXT_PUBLIC_ADMIN_PASSWORD=change-this-admin-password
-NEXT_PUBLIC_GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
+ADMIN_PASSWORD_HASH=pbkdf2:sha256:310000:...
+ADMIN_SESSION_SECRET=replace-with-at-least-32-random-characters
+ADMIN_ROLE=owner
+ADMIN_SESSION_MAX_AGE_SECONDS=28800
+N8N_WEBHOOK_URL=http://localhost:5678/webhook/img-extract
+N8N_WEBHOOK_SECRET=
+GOOGLE_SHEET_URL=https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit
 ```
 
-> Security note: this admin panel uses a client-side `sessionStorage` guard so it can work with `output: 'export'`. This hides the tool from normal navigation, but it is not equivalent to server-side authentication. For public production security, use a server-side admin login and proxy the n8n webhook through a protected API route.
+Generate the admin password hash:
+
+```bash
+npm run admin:hash -- "your-strong-admin-password"
+```
+
+Copy the generated `ADMIN_PASSWORD_HASH=...` value into `.env.local` or your deployment environment.
+
+Generate a strong session secret:
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
+```
+
+> Security note: do not use `NEXT_PUBLIC_*` variables for admin passwords, webhook URLs, or other secrets. `NEXT_PUBLIC_*` values are bundled into client-side JavaScript.
 
 ## Production Build
 
 ```bash
-npm run build        # Generates static export to /out
-npm run start        # (only works without `output: 'export'`)
+npm run build        # Generates standalone Next.js server output
+npm run start        # Starts the Next.js server
 ```
 
 ## Docker
@@ -95,9 +123,9 @@ docker compose logs -f web
 docker compose down
 ```
 
-The image is **multi-stage** (~30MB final size):
-- Stage 1: `node:20-alpine` builds Next.js
-- Stage 2: `nginx:1.27-alpine` serves the static `/out` folder
+The image is multi-stage:
+- Stage 1: `node:20-alpine` builds Next.js standalone output
+- Stage 2: `node:20-alpine` runs `server.js` with private server-side environment variables
 
 ## Project Structure
 
@@ -114,10 +142,11 @@ The image is **multi-stage** (~30MB final size):
 ├── components/                   # Header, Footer, PageHero, ServiceCard,
 │                                 # ServiceIcon, FAQAccordion, CTASection
 ├── lib/site.ts                   # Central site config (company info, content)
-├── Dockerfile                    # Multi-stage: builder + nginx runner
+├── Dockerfile                    # Multi-stage: builder + Node.js runner
 ├── docker-compose.yml            # Single web service
-├── nginx.conf                    # Nginx config (gzip, security headers, cache)
-├── next.config.mjs               # `output: 'export'` for static
+├── middleware.ts                 # Protects /admin/* routes with signed cookie auth
+├── nginx.conf                    # Legacy static Nginx config, not used by current Dockerfile
+├── next.config.mjs               # `output: 'standalone'` for server deployment
 ├── tailwind.config.ts            # Custom brand palette + animations
 └── tsconfig.json
 ```
@@ -140,7 +169,23 @@ All copy is centralized in `lib/site.ts`. To replace placeholder content:
 | `site.process` | Process steps |
 | `site.jobs` | Career listings |
 
-> **Note:** All images use Unsplash URLs with `unoptimized` prop (required for static export). For production, download and host locally.
+## Contact Inquiry Form
+
+The contact page includes a smart service inquiry / quote request form for public visitors.
+
+By default, the public contact form can work without storing data on the website server and falls back to opening a prefilled email to `site.email`.
+
+To submit form data directly to an automation workflow, configure a public webhook endpoint:
+
+```env
+NEXT_PUBLIC_CONTACT_WEBHOOK_URL=https://your-n8n-domain/webhook/contact-inquiry
+```
+
+Expected JSON payload includes visitor contact fields, service interest, waste type, estimated volume/frequency, timeline, message, `source`, and `submittedAt`.
+
+> Because this is a `NEXT_PUBLIC_*` value in a static site, the webhook URL is visible in the browser bundle. Use spam protection, validation, and rate limiting in the receiving workflow for production.
+
+> **Note:** All images use Unsplash URLs with `unoptimized` prop to keep image handling simple. For production, download and host images locally.
 
 ## SEO
 

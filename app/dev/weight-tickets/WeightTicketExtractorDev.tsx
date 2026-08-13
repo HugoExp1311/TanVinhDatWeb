@@ -2,7 +2,6 @@
 
 import { FormEvent, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ADMIN_LOGIN_PATH, ADMIN_LOGOUT_API_PATH, ADMIN_STATS_PATH, ADMIN_WEIGHT_TICKETS_API_PATH } from '@/lib/adminAuth';
 
 type OutputType = 'google_sheet' | 'excel';
 
@@ -14,7 +13,7 @@ type ProcessedFileResult = {
 const VALID_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-export function WeightTicketExtractor() {
+export function WeightTicketExtractorDev() {
     const router = useRouter();
     const formRef = useRef<HTMLFormElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,18 +73,17 @@ export function WeightTicketExtractor() {
     }
 
     async function sendFormData(formData: FormData, selectedOutputType: OutputType) {
-        const response = await fetch(ADMIN_WEIGHT_TICKETS_API_PATH, {
+        const response = await fetch('/api/dev/weight-tickets', {
             method: 'POST',
-            credentials: 'include',
             body: formData,
         });
 
         const contentType = response.headers.get('content-type') || '';
 
         if (!response.ok) {
-            if (response.status === 401) {
-                router.replace(ADMIN_LOGIN_PATH);
-                throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            if (response.status === 404) {
+                router.replace('/');
+                throw new Error('Trang tạm thờn đã bị tắt.');
             }
 
             if (contentType.includes('application/json')) {
@@ -179,7 +177,7 @@ export function WeightTicketExtractor() {
                     error: true,
                     message: 'Có lỗi xảy ra khi xử lý yêu cầu.',
                     details: message,
-                    hint: 'Vui lòng kiểm tra:\n- Phiên đăng nhập admin còn hiệu lực không?\n- Cấu hình N8N_WEBHOOK_URL server-side có đúng không?\n- n8n workflow có đang chạy không?\n- Kết nối internet có ổn định không?',
+                    hint: 'Vui lòng kiểm tra:\n- Cấu hình N8N_WEBHOOK_URL server-side có đúng không?\n- n8n workflow có đang chạy không?\n- Kết nối internet có ổn định không?',
                 },
                 true,
             );
@@ -189,40 +187,16 @@ export function WeightTicketExtractor() {
         }
     }
 
-    async function handleLogout() {
-        try {
-            await fetch(ADMIN_LOGOUT_API_PATH, {
-                method: 'POST',
-                credentials: 'include',
-            });
-        } finally {
-            router.replace(ADMIN_LOGIN_PATH);
-            router.refresh();
-        }
-    }
-
     return (
         <section className="section bg-slate-50 min-h-[80vh]">
             <div className="container-x">
                 <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                     <div>
-                        <p className="eyebrow">Admin Tool</p>
+                        <p className="eyebrow">Dev Tool</p>
                         <h1 className="section-title">Trích xuất phiếu cân xe</h1>
                         <p className="mt-4 max-w-2xl text-slate-600">
                             Upload ảnh phiếu cân hoặc nhập Google Drive URL để gửi sang n8n OCR và ghi dữ liệu vào Google Sheets hoặc tải Excel.
                         </p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => router.push(ADMIN_STATS_PATH)}
-                            className="btn-outline w-fit bg-white"
-                        >
-                            📊 Thống kê
-                        </button>
-                        <button type="button" onClick={handleLogout} className="btn-outline w-fit bg-white">
-                            Đăng xuất
-                        </button>
                     </div>
                 </div>
 
@@ -301,18 +275,18 @@ export function WeightTicketExtractor() {
                     </form>
 
                     <aside className="card p-6 h-fit">
-                        <h2 className="text-xl font-bold text-brand-primary-900">Cấu hình bảo mật</h2>
+                        <h2 className="text-xl font-bold text-brand-primary-900">Lưu ý</h2>
                         <dl className="mt-5 space-y-4 text-sm">
                             <div>
-                                <dt className="font-bold text-slate-700">Webhook n8n</dt>
+                                <dt className="font-bold text-slate-700">⚠️ Trang tạm thờn</dt>
                                 <dd className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-600">
-                                    Được gọi qua API server bảo vệ bởi phiên admin. URL thật không hiển thị trong trình duyệt.
+                                    Trang này chỉ dùng cho mục đích phát triển và kiểm thử. Không yêu cầu đăng nhập admin.
                                 </dd>
                             </div>
                             <div>
-                                <dt className="font-bold text-slate-700">Phiên admin</dt>
+                                <dt className="font-bold text-slate-700">Cấu hình n8n</dt>
                                 <dd className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-600">
-                                    Quyền truy cập được kiểm tra bằng cookie <code>HttpOnly</code> do server ký, không phụ thuộc vào bộ nhớ trình duyệt.
+                                    Đảm bảo biến môi trường <code>N8N_WEBHOOK_URL</code> đã được cấu hình trên server.
                                 </dd>
                             </div>
                         </dl>
