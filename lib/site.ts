@@ -28,10 +28,7 @@ export const site = {
         { href: '/projects', label: 'Dự án' },
         { href: '/certifications', label: 'Chứng nhận' },
         { href: '/process', label: 'Quy trình' },
-        { href: '/faq', label: 'Hỏi đáp' },
-        { href: '/pricing', label: 'Bảng giá' },
-        { href: '/careers', label: 'Tuyển dụng' },
-        { href: '/contact', label: 'Liên hệ' },
+        { href: '/faq', label: 'Tuyển dụng/FAQ' },
     ],
     services: [
         {

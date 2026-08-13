@@ -23,13 +23,13 @@ export function Header() {
                     </div>
                 </Link>
 
-                {/* Desktop Nav */}
-                <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-2">
-                    {site.nav.slice(0, 7).map((item) => (
+                {/* Desktop Nav (7 items: Trang chủ → Tuyển dụng/FAQ) */}
+                <nav aria-label="Điều hướng chính" className="hidden lg:flex items-center gap-1">
+                    {site.nav.map((item) => (
                         <Link
                             key={item.href}
                             href={item.href}
-                            className="group relative px-5 py-3 text-base font-bold text-slate-700 hover:text-brand-primary-800 transition-colors"
+                            className="group relative px-4 py-3 text-sm font-bold text-slate-700 hover:text-brand-primary-800 transition-colors"
                         >
                             {item.label}
                             {/* Animated underline */}
@@ -39,7 +39,7 @@ export function Header() {
                 </nav>
 
                 {/* Right CTA */}
-                <div className="hidden lg:flex items-center gap-4">
+                <div className="hidden lg:flex items-center gap-3">
                     <Link
                         href="/dev/weight-tickets"
                         className="px-5 py-3 rounded-xl border-2 border-brand-primary-200 text-brand-primary-800 text-base font-bold hover:bg-brand-primary-50 transition-colors"

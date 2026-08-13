@@ -10,7 +10,7 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 - **Node.js 20** (Alpine) for secure server-side API routes in Docker
 - **Google Maps embed** (no API key required)
 
-## Pages (14 routes)
+## Pages (12 routes)
 
 | Route | Description |
 |---|---|
@@ -20,9 +20,7 @@ Vietnamese branding/introduce website for **Tân Vĩnh Đạt** — industrial w
 | `/projects` | Dự án tiêu biểu (6 project cards) |
 | `/certifications` | Chứng nhận ISO/regulatory |
 | `/process` | Quy trình 7 bước |
-| `/faq` | Hỏi đáp (6-item accordion) |
-| `/pricing` | Bảng giá tham khảo (3 category tables) |
-| `/careers` | Tuyển dụng (5 job listings) |
+| `/faq` | Tuyển dụng/FAQ (jobs + accordion) |
 | `/contact` | Liên hệ, form yêu cầu tư vấn/báo giá + Google Maps embed |
 | `/policies` | Chính sách & Điều khoản |
 | `/admin/login` | Đăng nhập admin nội bộ |

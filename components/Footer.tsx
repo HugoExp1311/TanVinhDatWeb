@@ -38,7 +38,7 @@ export function Footer() {
                 <div>
                     <h3 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">Liên kết nhanh</h3>
                     <ul className="space-y-2.5">
-                        {site.nav.slice(0, 6).map((item) => (
+                        {site.nav.slice(0, 7).map((item) => (
                             <li key={item.href}>
                                 <Link href={item.href} className="text-sm text-slate-400 hover:text-brand-secondary-400 transition-colors">
                                     {item.label}
